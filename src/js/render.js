@@ -4,8 +4,7 @@ import { collect, refOf, validKey, countByBook, inTestament, hasTestaments } fro
 import { parseQuery } from './search.js';
 import { tagCounts } from './tags.js';
 import { COLORS, COLOR_NAMES, pushRecent } from './study.js';
-import { canShare } from './share.js';
-import { verseOfTheDay } from './daily.js';
+import { dailyEntry } from './daily.js';
 import { ICON_TAG, ICON_BM, ICON_NOTE, ICON_HL, ICON_COPY, ICON_CHECK } from './icons.js';
 
 const verseText = (key) => {
@@ -308,7 +307,7 @@ export function renderSelbar() {
     `<strong>${n} ${n === 1 ? 'versículo' : 'versículos'}</strong>` +
     `<div class="selactions">` +
     `<button class="btn" data-act="selcopy">Copiar</button>` +
-    (canShare() ? `<button class="btn" data-act="selshare">Compartir</button>` : '') +
+    `<button class="btn" data-act="selshare">Compartir</button>` +
     `<button class="btn" data-act="seltag" aria-expanded="${sm === 'tag'}">Etiquetar</button>` +
     `<button class="btn" data-act="selcolor" aria-expanded="${sm === 'color'}">Resaltar</button>` +
     `<button class="btn ghost" data-act="selclear">Listo</button>` +
@@ -327,11 +326,14 @@ function navHTML() {
 }
 
 function dailyHTML() {
-  const key = verseOfTheDay();
-  if (!key) return '';
-  return `<section class="daily"><span class="eyebrow">Versículo del día</span>` +
-    `<p class="dtext">“${esc(verseText(key))}”</p>` +
-    `<div class="dfoot"><strong>${esc(refOf(key))}</strong><div class="dbtns">` +
+  const d = dailyEntry();
+  if (!d) return '';
+  const key = d.key;
+  return `<section class="daily" aria-label="Versículo del día">` +
+    `<div class="dhead"><span class="eyebrow">Versículo del día</span><span class="dtheme">${esc(d.tema)}</span></div>` +
+    `<blockquote class="dtext">“${esc(verseText(key))}”</blockquote>` +
+    `<div class="dfoot"><strong class="dref">${esc(refOf(key))}</strong><div class="dbtns">` +
+    `<button class="btn primary" data-act="dshare" data-key="${key}">Compartir imagen</button>` +
     `<button class="btn" data-act="goto" data-key="${key}">Abrir</button>` +
     `<button class="btn" data-act="copy" data-key="${key}">Copiar</button></div></div></section>`;
 }

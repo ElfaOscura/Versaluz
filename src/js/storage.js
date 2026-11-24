@@ -11,6 +11,8 @@ const LS_PREFS = 'rvr1960.prefs';
 const LS_CATS = 'rvr1960.cats';
 const LS_NOTECAT = 'rvr1960.notecat';
 const LS_NOTEORDER = 'rvr1960.noteorder';
+const LS_LASTBACKUP = 'rvr1960.lastbackup'; // cuándo se exportó o importó por última vez
+const LS_CHANGED = 'rvr1960.changed';       // cuándo cambió por última vez algo que va en el respaldo
 const KEY_RE = /^\d+\.\d+\.\d+$/;
 
 function lsGet(k) {
@@ -21,15 +23,35 @@ function lsSet(k, v) {
 }
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 
-export const saveTags = () => lsSet(LS_TAGS, store.tags);
-export const saveBms = () => lsSet(LS_BMS, store.bms);
+/** Anota que hay datos nuevos (para avisar si falta respaldarlos) y avisa a la pantalla. */
+function touch() {
+  try { localStorage.setItem(LS_CHANGED, String(Date.now())); } catch { /* almacenamiento bloqueado */ }
+  if (typeof window !== 'undefined' && window.dispatchEvent) window.dispatchEvent(new Event('datachange'));
+}
+const saveData = (k, v) => { lsSet(k, v); touch(); };
+
+export const saveTags = () => saveData(LS_TAGS, store.tags);
+export const saveBms = () => saveData(LS_BMS, store.bms);
 export const saveRecent = () => lsSet(LS_RECENT, store.recent);
-export const saveNotes = () => lsSet(LS_NOTES, store.notes);
-export const saveHl = () => lsSet(LS_HL, store.hl);
-export const saveCats = () => lsSet(LS_CATS, store.cats);
-export const saveNoteCat = () => lsSet(LS_NOTECAT, store.noteCat);
-export const saveNoteOrder = () => lsSet(LS_NOTEORDER, store.noteOrder);
+export const saveNotes = () => saveData(LS_NOTES, store.notes);
+export const saveHl = () => saveData(LS_HL, store.hl);
+export const saveCats = () => saveData(LS_CATS, store.cats);
+export const saveNoteCat = () => saveData(LS_NOTECAT, store.noteCat);
+export const saveNoteOrder = () => saveData(LS_NOTEORDER, store.noteOrder);
 export const savePrefs = () => lsSet(LS_PREFS, store.prefs);
+
+/** { last, changed }: milisegundos del último respaldo y del último cambio (0 = nunca). */
+export function backupMeta() {
+  const num = (k) => { try { return Number(localStorage.getItem(k)) || 0; } catch { return 0; } };
+  return { last: num(LS_LASTBACKUP), changed: num(LS_CHANGED) };
+}
+
+/** Marca que los datos se acaban de respaldar (exportar o importar). */
+export function markBackup() {
+  const { changed } = backupMeta();
+  try { localStorage.setItem(LS_LASTBACKUP, String(Math.max(Date.now(), changed))); } catch { /* almacenamiento bloqueado */ }
+  if (typeof window !== 'undefined' && window.dispatchEvent) window.dispatchEvent(new Event('datachange'));
+}
 
 export function loadUserData() {
   const t = lsGet(LS_TAGS);

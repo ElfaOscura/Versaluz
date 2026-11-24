@@ -8,11 +8,17 @@ import { showApp, showSetup } from './js/render.js';
 import { initEvents } from './js/events.js';
 import { initBackup } from './js/backup.js';
 import { initNotesView } from './js/notesview.js';
+import { initShareView } from './js/shareview.js';
 import { initPwa } from './js/pwa.js';
 import { initParticles } from './js/particles.js';
+import { auditDaily } from './js/daily.js';
 
 function openBible(bible) {
   indexBible(bible);
+  if (import.meta.env.DEV) {
+    const bad = auditDaily(); // avisa si alguna referencia del versículo del día no existe en este texto
+    if (bad.length) console.warn('Versículo del día: referencias que no se encuentran:', bad);
+  }
   showApp();
 }
 
@@ -66,6 +72,7 @@ loadUserData();
 initEvents();
 initBackup();
 initNotesView();
+initShareView();
 initPwa();
 initParticles();
 initFileInput();

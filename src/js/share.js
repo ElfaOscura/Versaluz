@@ -1,7 +1,7 @@
 // Copiar y compartir versículos.
 import { store } from './store.js';
+import { normStr } from './util.js';
 
-const VERSION = 'RVR1960';
 const parse = (key) => key.split('.').map(Number);
 
 /** Ordena claves por libro, capítulo y versículo. */
@@ -13,11 +13,19 @@ export function sortKeys(keys) {
   });
 }
 
+/** Firma de todo lo que se comparte o copia. */
+export const APP_NAME = 'Versaluz';
+export const MAX_IMAGE_VERSES = 2;
+
+// En las citas compartidas los evangelios llevan "San": San Mateo, San Marcos, San Lucas, San Juan.
+const SAINTS = new Set(['mateo', 'marcos', 'lucas', 'juan']);
+export const shareBookName = (name) => (SAINTS.has(normStr(name)) ? `San ${name}` : name);
+
 /**
- * Da formato de cita. Los versículos seguidos del mismo capítulo se unen en un rango:
- * “Porque de tal manera… ” — Juan 3:16-17 (RVR1960)
+ * Pasajes listos para citar. Los versículos seguidos del mismo capítulo se unen en un rango:
+ * [{ ref: 'San Juan 3:16-17', text: 'Porque de tal manera…' }]
  */
-export function formatVerses(keys) {
+export function verseRuns(keys) {
   const runs = [];
   for (const key of sortKeys(keys)) {
     const [b, c, v] = parse(key);
@@ -30,11 +38,17 @@ export function formatVerses(keys) {
       runs.push({ b, c, v1: v, v2: v, texts: [text] });
     }
   }
-  return runs.map((r) => {
-    const ref = `${store.bible[r.b].name} ${r.c}:${r.v1}` + (r.v2 > r.v1 ? `-${r.v2}` : '');
-    return `“${r.texts.join(' ')}” — ${ref} (${VERSION})`;
-  }).join('\n\n');
+  return runs.map((r) => ({
+    ref: `${shareBookName(store.bible[r.b].name)} ${r.c}:${r.v1}` + (r.v2 > r.v1 ? `-${r.v2}` : ''),
+    text: r.texts.join(' '),
+  }));
 }
+
+/** “Texto” — San Mateo 3:4 (cada pasaje en su párrafo). */
+export const formatVerses = (keys) => verseRuns(keys).map((r) => `“${r.text}” — ${r.ref}`).join('\n\n');
+
+/** El texto que se copia o se comparte: las citas y, al final, la firma de la app. */
+export const shareMessage = (keys) => `${formatVerses(keys)}\n\n${APP_NAME}`;
 
 /** Copia al portapapeles; si el navegador lo niega, prueba con un textarea temporal. */
 export async function copyText(text) {
@@ -62,6 +76,17 @@ export const canShare = () => typeof navigator !== 'undefined' && typeof navigat
 export async function shareText(text) {
   try {
     await navigator.share({ text });
+    return true;
+  } catch (e) {
+    return e && e.name === 'AbortError' ? null : false;
+  }
+}
+
+/** Comparte un archivo (la imagen). true = compartido, null = canceló, false = falló, 'nofiles' = el navegador no comparte archivos. */
+export async function shareFile(file, title = APP_NAME) {
+  try {
+    if (!navigator.canShare || !navigator.canShare({ files: [file] })) return 'nofiles';
+    await navigator.share({ files: [file], title });
     return true;
   } catch (e) {
     return e && e.name === 'AbortError' ? null : false;

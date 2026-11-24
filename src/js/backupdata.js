@@ -3,8 +3,8 @@ import { store } from './store.js';
 import { validKey, refOf } from './bible.js';
 import { sortKeys } from './share.js';
 import { COLORS, COLOR_NAMES } from './study.js';
-import { saveTags, saveNotes, saveHl, saveBms, saveNoteOrder, saveNoteCat } from './storage.js';
-import { addCategory } from './notes.js';
+import { saveTags, saveNotes, saveHl, saveBms, saveCats, saveNoteOrder, saveNoteCat, backupMeta } from './storage.js';
+import { normalizeCat } from './notes.js';
 
 const VERSION = 'RVR1960';
 const verseText = (key) => {
@@ -31,37 +31,57 @@ export function stamp(date = new Date()) {
   return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
 }
 
-/**
- * Suma un respaldo a los datos actuales. No pisa las notas ni los resaltados que ya tienes.
- * Devuelve { tags, notes, marks, bms } con lo que se agregó, o null si el texto no es un respaldo.
- */
-export function mergeBackup(data) {
+/* ---------- Nombres de archivo ---------- */
+/** versaluz_2026-11-24.json */
+export const backupFileName = (date = new Date()) => `versaluz_${stamp(date)}.json`;
+/** Mis Notas-Versaluz-2026-11-24.md */
+export const notesFileName = (date = new Date()) => `Mis Notas-Versaluz-${stamp(date)}.md`;
+
+/* ---------- Sumar un respaldo ---------- */
+const cloneState = () => JSON.parse(JSON.stringify({
+  tags: store.tags, notes: store.notes, hl: store.hl, bms: store.bms,
+  cats: store.cats, noteCat: store.noteCat, noteOrder: store.noteOrder,
+}));
+
+/** Suma `data` a `t` (los datos de la app, o una copia para la vista previa). Devuelve lo que se agregó, o null si no es un respaldo. */
+function mergeInto(t, data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
-  const added = { tags: 0, notes: 0, marks: 0, bms: 0 };
+  const added = { tags: 0, notes: 0, cats: 0, marks: 0, bms: 0 };
+
+  const addCat = (raw) => {
+    const name = normalizeCat(raw);
+    if (!name) return '';
+    const found = t.cats.find((c) => c.localeCompare(name, 'es', { sensitivity: 'base' }) === 0);
+    if (found) return found;
+    if (t.cats.length >= 40) return '';
+    t.cats.push(name);
+    added.cats++;
+    return name;
+  };
 
   if (data.tags && typeof data.tags === 'object') {
     for (const key of Object.keys(data.tags)) {
       if (!validKey(key) || !Array.isArray(data.tags[key])) continue;
-      const current = store.tags[key] || [];
+      const current = t.tags[key] || [];
       for (const raw of data.tags[key]) {
-        const t = String(raw).replace(/,/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40);
-        if (t && !current.includes(t)) { current.push(t); added.tags++; }
+        const tag = String(raw).replace(/,/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40);
+        if (tag && !current.includes(tag)) { current.push(tag); added.tags++; }
       }
-      if (current.length) store.tags[key] = current;
+      if (current.length) t.tags[key] = current;
     }
   }
   if (data.notes && typeof data.notes === 'object') {
     for (const key of Object.keys(data.notes)) {
       const text = String(data.notes[key]).trim().slice(0, 2000);
-      if (!validKey(key) || !text || store.notes[key]) continue;
-      store.notes[key] = text;
+      if (!validKey(key) || !text || t.notes[key]) continue;
+      t.notes[key] = text;
       added.notes++;
     }
   }
   if (data.highlights && typeof data.highlights === 'object') {
     for (const key of Object.keys(data.highlights)) {
-      if (!validKey(key) || !COLORS.includes(data.highlights[key]) || store.hl[key]) continue;
-      store.hl[key] = data.highlights[key];
+      if (!validKey(key) || !COLORS.includes(data.highlights[key]) || t.hl[key]) continue;
+      t.hl[key] = data.highlights[key];
       added.marks++;
     }
   }
@@ -71,34 +91,54 @@ export function mergeBackup(data) {
     : (data.bookmark && data.bookmark.key ? [data.bookmark.key] : []);
   for (const raw of incoming) {
     const key = String(raw);
-    if (!validKey(key) || store.bms.includes(key)) continue;
-    store.bms.push(key);
+    if (!validKey(key) || t.bms.includes(key)) continue;
+    t.bms.push(key);
     added.bms++;
   }
-  store.bms.length = Math.min(store.bms.length, 100);
+  t.bms.length = Math.min(t.bms.length, 100);
 
   // Categorías de notas: se crean las que falten y se asignan solo a notas que aún no tienen una
-  if (Array.isArray(data.categories)) for (const c of data.categories) addCategory(c);
+  if (Array.isArray(data.categories)) for (const c of data.categories) addCat(c);
   if (data.noteCategories && typeof data.noteCategories === 'object' && !Array.isArray(data.noteCategories)) {
     for (const key of Object.keys(data.noteCategories)) {
-      const name = addCategory(data.noteCategories[key]);
-      if (!name || !validKey(key) || !store.notes[key] || store.noteCat[key]) continue;
-      store.noteCat[key] = name;
+      const name = addCat(data.noteCategories[key]);
+      if (!name || !validKey(key) || !t.notes[key] || t.noteCat[key]) continue;
+      t.noteCat[key] = name;
     }
   }
   if (Array.isArray(data.noteOrder)) {
     for (const key of data.noteOrder) {
-      if (typeof key === 'string' && validKey(key) && store.notes[key] && !store.noteOrder.includes(key)) store.noteOrder.push(key);
+      if (typeof key === 'string' && validKey(key) && t.notes[key] && !t.noteOrder.includes(key)) t.noteOrder.push(key);
     }
   }
-
-  saveTags();
-  saveNotes();
-  saveHl();
-  saveBms();
-  saveNoteCat();
-  saveNoteOrder();
   return added;
+}
+
+/** Qué se sumaría, sin tocar nada. Null si no es un respaldo. */
+export const previewBackup = (data) => mergeInto(cloneState(), data);
+
+/**
+ * Suma un respaldo a los datos actuales. No pisa las notas ni los resaltados que ya tienes.
+ * Devuelve { tags, notes, cats, marks, bms } con lo que se agregó, o null si no es un respaldo.
+ */
+export function mergeBackup(data) {
+  const added = mergeInto(store, data);
+  if (!added) return null;
+  if (added.tags + added.notes + added.cats + added.marks + added.bms > 0) {
+    saveTags(); saveNotes(); saveHl(); saveBms(); saveCats(); saveNoteCat(); saveNoteOrder();
+  }
+  return added;
+}
+
+/** «12 notas, 2 categorías y 1 marcalibro» (o que no hay nada nuevo). */
+export function describeAdded(a) {
+  const n = (v, one, many) => (v ? `${v} ${v === 1 ? one : many}` : '');
+  const parts = [
+    n(a.notes, 'nota', 'notas'), n(a.cats, 'categoría', 'categorías'), n(a.tags, 'etiqueta', 'etiquetas'),
+    n(a.marks, 'resaltado', 'resaltados'), n(a.bms, 'marcalibro', 'marcalibros'),
+  ].filter(Boolean);
+  if (!parts.length) return '';
+  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} y ${parts.at(-1)}`;
 }
 
 /* ---------- Markdown ---------- */
@@ -165,4 +205,11 @@ export function downloadFile(name, text, mime) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Estado del respaldo: { last, changed, pending, never } (fechas en ms). pending = hay datos sin respaldar. */
+export function backupState() {
+  const { last, changed } = backupMeta();
+  const data = hasUserData();
+  return { last, changed, never: !last, pending: data && (!last || changed > last), hasData: data };
 }

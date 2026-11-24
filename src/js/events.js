@@ -6,7 +6,8 @@ import {
   setNote, setHighlight, setHighlightMany, addTagsMany,
   toggleSelect, clearSelection, toggleBookmark, removeBookmark,
 } from './study.js';
-import { formatVerses, copyText, shareText } from './share.js';
+import { shareMessage, copyText } from './share.js';
+import { openShare } from './shareview.js';
 import { run, goto, step, syncSelects, updateVerse, refreshTagsUI, renderAside, renderSelbar, renderTagsPanel } from './render.js';
 import { initTheme, setTheme } from './theme.js';
 import { openNotes } from './notesview.js';
@@ -94,7 +95,7 @@ function openIfReference(text) {
 const selLabel = () => (state.sel.length === 1 ? refOf(state.sel[0]) : `${state.sel.length} versículos`);
 
 async function copyKeys(keys, label) {
-  const ok = await copyText(formatVerses(keys));
+  const ok = await copyText(shareMessage(keys));
   toast(ok ? `Copiado: ${label}` : 'No se pudo copiar');
 }
 
@@ -328,7 +329,10 @@ export function initEvents() {
         copyKeys(state.sel, selLabel());
         break;
       case 'selshare':
-        shareText(formatVerses(state.sel)).then((r) => { if (r === false) toast('No se pudo compartir'); });
+        openShare(state.sel);
+        break;
+      case 'dshare':
+        openShare([key], { image: true });
         break;
       case 'seltag':
         state.selMode = state.selMode === 'tag' ? '' : 'tag';
