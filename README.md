@@ -42,9 +42,9 @@ Construido con **Vite + Tailwind CSS v4** sin framework frontend.
 
 La aplicación obtiene el texto bíblico siguiendo este orden:
 
-1. `public/es_rvr1960.json`, si lo colocas localmente para uso propio (queda excluido del repositorio mediante `.gitignore`)[cite: 4, 7].
-2. Consulta una fuente externa configurada en `SOURCES` (`src/js/bible.js`), como el repositorio **`thiagobodruk/bible`** en GitHub, si no existe un archivo local[cite: 7].
-3. Selección manual del archivo JSON desde la interfaz si ninguna fuente anterior está disponible[cite: 7].
+1. `public/es_rvr1960.json`, si lo colocas localmente para uso propio (queda excluido del repositorio mediante `.gitignore`).
+2. Consulta una fuente externa configurada en `SOURCES` (`src/js/bible.js`), como el repositorio **`thiagobodruk/bible`** en GitHub, si no existe un archivo local.
+3. Selección manual del archivo JSON desde la interfaz si ninguna fuente anterior está disponible.
 
 ### Créditos del dataset JSON
 - **Fuente de datos bíblicos:** [Thiago Bodruk (`thiagobodruk/bible`)](https://github.com/thiagobodruk/bible) por la recopilación y estructuración de textos bíblicos en formato JSON.
