@@ -7,7 +7,8 @@ import { SOURCES, normalizeBible, parseBible, indexBible, fetchBible } from './j
 import { showApp, showSetup } from './js/render.js';
 import { initEvents } from './js/events.js';
 import { initBackup } from './js/backup.js';
-import { initNotesView } from './js/notesview.js';
+import { initNotebook } from './js/notebook.js';
+import { initTour, maybeStartTour } from './js/tour.js';
 import { initShareView } from './js/shareview.js';
 import { initPwa } from './js/pwa.js';
 import { initParticles } from './js/particles.js';
@@ -20,6 +21,7 @@ function openBible(bible) {
     if (bad.length) console.warn('Versículo del día: referencias que no se encuentran:', bad);
   }
   showApp();
+  maybeStartTour();
 }
 
 /** Carga manual del archivo (pantalla inicial o "Cargar otro archivo"). */
@@ -71,7 +73,8 @@ async function boot() {
 loadUserData();
 initEvents();
 initBackup();
-initNotesView();
+initNotebook();
+initTour();
 initShareView();
 initPwa();
 initParticles();

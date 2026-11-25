@@ -8,9 +8,9 @@ import {
 } from './study.js';
 import { shareMessage, copyText } from './share.js';
 import { openShare } from './shareview.js';
-import { run, goto, step, syncSelects, updateVerse, refreshTagsUI, renderAside, renderSelbar, renderTagsPanel } from './render.js';
+import { run, goto, step, syncSelects, updateVerse, refreshTagsUI, renderAside, renderSelbar, renderTagsPanel, getView } from './render.js';
 import { initTheme, setTheme } from './theme.js';
-import { openNotes } from './notesview.js';
+import { openNotebook, closeNotebook, escapeNotebook } from './notebook.js';
 import { applyPrefs, changeSize, setWidth, setSwipe } from './prefs.js';
 
 const setExpanded = (btn, on) => btn.setAttribute('aria-expanded', String(on));
@@ -40,15 +40,29 @@ function closeAside() {
 }
 
 function openTagsPanel() {
+  const d = $('tagsPanel');
+  if (d.open) return;
   state.tagDel = '';
-  $('tagsPanel').hidden = false;
   renderTagsPanel();
   closeAside();
-  window.scrollTo({ top: 0 });
+  closeMenu();
+  d.appendChild($('toast')); // el aviso debe verse por encima del modal
+  d.showModal();
+  document.documentElement.classList.add('modal-open');
+  d.querySelector('.nv-scroll').scrollTop = 0;
 }
-function closeTagsPanel() {
-  $('tagsPanel').hidden = true;
-  state.tagDel = '';
+function initTagsPanel() {
+  const d = $('tagsPanel');
+  d.addEventListener('click', (ev) => {
+    if (ev.target === d || ev.target.closest('[data-tagsclose]')) d.close();
+  });
+  d.addEventListener('close', () => {
+    state.tagDel = '';
+    document.documentElement.classList.remove('modal-open');
+    document.body.appendChild($('toast'));
+    refreshTagsUI();
+    $('btnMenu').focus();
+  });
 }
 
 function focusEditor(id) {
@@ -81,7 +95,7 @@ function clearAll() {
 }
 
 /** ¿Se está leyendo un capítulo? Solo entonces valen las flechas y el deslizar. */
-const canStep = () => !!store.bible && state.mode === 'read' && state.b >= 0 && state.c > 0;
+const canStep = () => !!store.bible && getView() === 'read' && state.mode === 'read' && state.b >= 0 && state.c > 0;
 
 /** Si el texto del buscador es una referencia (Juan 3:16, Salmos 23, 1 Cor 13:4-7), abre ese pasaje. */
 function openIfReference(text) {
@@ -122,11 +136,13 @@ export function initEvents() {
     if (e.target.closest('.menu-item')) closeMenu();
   });
   $('swipeToggle').addEventListener('change', (e) => setSwipe(e.target.checked));
-  // El panel de respaldo está arriba de la página: súbela para que se vea
-  $('btnBackup').addEventListener('click', () => window.scrollTo({ top: 0 }));
-  $('btnNotes').addEventListener('click', openNotes);
+  $('btnNotes').addEventListener('click', () => {
+    if (getView() === 'notebook') closeNotebook(); else openNotebook();
+  });
+  document.addEventListener('manage-tags', openTagsPanel);
+  initTagsPanel();
   $('btnTags').addEventListener('click', () => {
-    if ($('tagsPanel').hidden) openTagsPanel(); else closeTagsPanel();
+    openTagsPanel();
   });
 
   // Aviso en vivo: si el nombre ya existe, se unirán
@@ -277,13 +293,13 @@ export function initEvents() {
         break;
       case 'notesopen':
         closeAside();
-        openNotes();
+        openNotebook();
         break;
       case 'tagdel': {
         if (state.tagDel !== tag) {
           state.tagDel = tag;
           renderTagsPanel();
-          setTimeout(() => { if (state.tagDel === tag) { state.tagDel = ''; if (!$('tagsPanel').hidden) renderTagsPanel(); } }, 4000);
+          setTimeout(() => { if (state.tagDel === tag) { state.tagDel = ''; if ($('tagsPanel').open) renderTagsPanel(); } }, 4000);
           break;
         }
         state.tagDel = '';
@@ -330,6 +346,9 @@ export function initEvents() {
         break;
       case 'selshare':
         openShare(state.sel);
+        break;
+      case 'vshare':
+        openShare([key]);
         break;
       case 'dshare':
         openShare([key], { image: true });
@@ -427,14 +446,13 @@ export function initEvents() {
     }
 
     if (e.key === 'Escape') {
-      if ($('notesView').open) return; // el cuadro de notas se cierra solo con Esc
+      if (document.querySelector('dialog[open]')) return; // un modal abierto se cierra solo con Esc; no tocar lo de debajo
       if (!$('menu').hidden) { closeMenu(); $('btnMenu').focus(); }
       else if (!$('filterPanel').hidden) { closeFilters(); $('btnFilters').focus(); }
+      else if (getView() === 'notebook') escapeNotebook();
       else if (state.editing) closeEditor();
       else if (state.selMode) { state.selMode = ''; renderSelbar(); }
       else if (state.sel.length) { clearSelection().forEach(updateVerse); renderSelbar(); }
-      else if (!$('tagsPanel').hidden) { closeTagsPanel(); $('btnMenu').focus(); }
-      else if (!$('panel').hidden) { $('panel').hidden = true; setExpanded($('btnBackup'), false); }
       return;
     }
 

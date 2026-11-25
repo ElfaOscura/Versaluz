@@ -13,8 +13,8 @@ const say = (text) => { $('backupMsg').textContent = text; };
 const when = (ms) => new Date(ms).toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' });
 
 function closePanel() {
-  $('panel').hidden = true;
-  $('btnBackup').setAttribute('aria-expanded', 'false');
+  const d = $('panel');
+  if (d.open) d.close();
 }
 
 /** Línea de estado del respaldo y punto discreto en el engranaje y en el menú si hay cambios sin respaldar. */
@@ -87,11 +87,23 @@ async function shareBackup() {
 }
 
 export function initBackup() {
+  const dlg = $('panel');
   $('btnBackup').addEventListener('click', () => {
-    const panel = $('panel');
-    panel.hidden = !panel.hidden;
-    $('btnBackup').setAttribute('aria-expanded', String(!panel.hidden));
-    if (!panel.hidden) { say(''); clearStaged(); refreshBackupStatus(); }
+    if (dlg.open) return;
+    say(''); clearStaged(); refreshBackupStatus();
+    dlg.appendChild($('toast')); // el aviso debe verse por encima del modal
+    dlg.showModal();
+    document.documentElement.classList.add('modal-open');
+    dlg.querySelector('.nv-scroll').scrollTop = 0;
+  });
+  dlg.addEventListener('click', (e) => {
+    if (e.target === dlg || e.target.closest('[data-bkclose]')) dlg.close();
+  });
+  dlg.addEventListener('close', () => {
+    document.documentElement.classList.remove('modal-open');
+    document.body.appendChild($('toast'));
+    clearStaged();
+    $('btnMenu').focus();
   });
   window.addEventListener('datachange', refreshBackupStatus);
   refreshBackupStatus();

@@ -5,7 +5,7 @@ import { parseQuery } from './search.js';
 import { tagCounts } from './tags.js';
 import { COLORS, COLOR_NAMES, pushRecent } from './study.js';
 import { dailyEntry } from './daily.js';
-import { ICON_TAG, ICON_BM, ICON_NOTE, ICON_HL, ICON_COPY, ICON_CHECK } from './icons.js';
+import { ICON_TAG, ICON_BM, ICON_NOTE, ICON_HL, ICON_COPY, ICON_CHECK, ICON_SHARE } from './icons.js';
 
 const verseText = (key) => {
   const [b, c, v] = key.split('.').map(Number);
@@ -24,7 +24,24 @@ function setBibleControls(visible) {
   }
 }
 
+let view = 'read';
+export const getView = () => view;
+
+/** Cambia entre la lectura ('read') y la vista "Mi cuaderno" ('notebook'). */
+export function setView(v) {
+  view = v === 'notebook' && store.bible ? 'notebook' : 'read';
+  const nb = view === 'notebook';
+  $('notebook').hidden = !nb;
+  $('app').hidden = nb || !store.bible;
+  document.body.classList.toggle('view-notebook', nb);
+  const btn = $('btnNotes');
+  btn.setAttribute('aria-pressed', String(nb));
+  btn.title = nb ? 'Volver a la lectura' : 'Mi cuaderno';
+  btn.setAttribute('aria-label', nb ? 'Volver a la lectura' : 'Mi cuaderno');
+}
+
 export function showSetup(msg = '') {
+  setView('read');
   store.bible = null;
   resetState();
   renderSelbar();
@@ -105,7 +122,7 @@ export function refreshTagsUI() {
   $('selTag').value = state.tag;
   $('tagList').innerHTML = names.map((t) => `<option value="${esc(t)}">`).join('');
   renderAside();
-  if (!$('tagsPanel').hidden) renderTagsPanel();
+  if ($('tagsPanel').open) renderTagsPanel();
 }
 
 /* ---------- Aside: marcalibros, recientes y etiquetas ---------- */
@@ -140,7 +157,7 @@ export function renderAside() {
 
   const noteCount = Object.keys(store.notes).length;
   body.innerHTML =
-    `<section class="card"><h2>Notas</h2><button class="btn notesbtn" type="button" data-act="notesopen">Lista de notas<small>${noteCount}</small></button></section>` +
+    `<section class="card"><h2>Mi cuaderno</h2><button class="btn notesbtn" type="button" data-act="notesopen">Abrir Mi cuaderno<small>${noteCount}</small></button></section>` +
     `<section class="card"><h2>Marcalibros</h2>${bookmarks}</section>` +
     (recent ? `<section class="card"><h2>Recientes</h2>${recent}</section>` : '') +
     `<section class="card"><h2>Etiquetas</h2>${tags}` +
@@ -246,8 +263,7 @@ export function verseHTML(key, mode) {
   const selLabel = `${selected ? 'Quitar de la selección' : 'Seleccionar'} ${esc(ref)}`;
   const head = reading
     ? ''
-    : `<div class="vhead"><button class="ref" data-act="goto" data-key="${key}" title="Abrir en su capítulo">${esc(ref)}</button>` +
-      `<button class="selbtn" data-act="select" data-key="${key}" aria-pressed="${selected}" aria-label="${selLabel}" title="Seleccionar">${ICON_CHECK}</button></div>`;
+    : `<div class="vhead"><button class="ref" data-act="goto" data-key="${key}" title="Abrir en su capítulo">${esc(ref)}</button></div>`;
   const num = reading
     ? `<button class="vnum" data-act="select" data-key="${key}" aria-pressed="${selected}" aria-label="${selLabel}" title="Seleccionar">${v}</button>`
     : '';
@@ -263,10 +279,12 @@ export function verseHTML(key, mode) {
     noteView +
     `<div class="vmeta"><div class="chips">${chips}</div><div class="vact">` +
     act('tag', 'Etiquetar', ICON_TAG) +
+    `<button class="icon" data-act="vshare" data-key="${key}" aria-label="Compartir ${esc(ref)}" title="Compartir">${ICON_SHARE}</button>` +
     act('note', note ? 'Editar nota' : 'Agregar nota', ICON_NOTE, note ? ' has' : '') +
     act('color', 'Resaltar', ICON_HL, color ? ' has' : '') +
     `<button class="icon" data-act="copy" data-key="${key}" aria-label="Copiar ${esc(ref)}" title="Copiar">${ICON_COPY}</button>` +
     `<button class="icon" data-act="bm" data-key="${key}" aria-pressed="${isBm}" aria-label="Marcalibro en ${esc(ref)}" title="Marcalibro">${ICON_BM}</button>` +
+    `<button class="icon selbtn" data-act="select" data-key="${key}" aria-pressed="${selected}" aria-label="${selLabel}" title="Seleccionar">${ICON_CHECK}</button>` +
     `</div></div>` +
     panel +
     `</div></article>`;
@@ -286,7 +304,7 @@ export function renderSelbar() {
   const bar = $('selbar');
   const root = document.documentElement.style;
   const n = state.sel.length;
-  if (!n || !store.bible) {
+  if (n < 2 || !store.bible) { // con uno solo se usan los iconos del propio versículo
     state.selMode = '';
     bar.hidden = true;
     bar.innerHTML = '';
@@ -350,13 +368,14 @@ function welcomeHTML() {
     `<li>Busca una frase exacta entre comillas, <code>"el amor es sufrido"</code>, o varias opciones con <code>amor | fe</code>.</li>` +
     `<li>Abre los filtros para elegir testamento, libro, capítulo, versículo o etiqueta.</li>` +
     `<li>En cada versículo puedes etiquetar, anotar, resaltar, copiar o dejar un marcalibro.</li>` +
-    `<li>Toca el número de un versículo para seleccionar varios y trabajar con ellos juntos.</li>` +
+    `<li>Toca el número de un versículo (o su icono de selección) para elegir varios; con dos o más aparece una barra para copiar, compartir, etiquetar o resaltar a la vez.</li>` +
     `<li>Atajos: <code>/</code> para buscar, <code>←</code> y <code>→</code> para cambiar de capítulo. En el móvil, desliza a los lados.</li></ul>` +
     `</div>`;
 }
 
 export function run() {
   if (!store.bible) return;
+  if (view !== 'read') setView('read'); // cualquier búsqueda o navegación vuelve a la lectura
   const parsed = parseQuery(state.q);
   state.groups = parsed.groups;
   state.terms = parsed.terms;

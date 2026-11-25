@@ -254,9 +254,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .verse.sel { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
 .vhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .vhead .ref { margin-bottom: 0; }
-.selbtn { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
-.selbtn:hover { border-color: var(--accent); color: var(--accent); }
-.selbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.icon.selbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.icon.selbtn[aria-pressed="true"] .ic { fill: none; }
 .icon.has { color: var(--accent); }
 .vbody { min-width: 0; }
 .ref { background: none; border: 0; padding: 0; margin-bottom: 4px; font-size: .82rem; font-weight: 600; letter-spacing: .02em; color: var(--accent); cursor: pointer; text-align: left; }
@@ -456,6 +455,9 @@ dialog.nv {
   background: linear-gradient(145deg, rgb(var(--glass-a) / .96), rgb(var(--glass-b) / .96));
   box-shadow: var(--shadow), 0 30px 80px rgb(0 0 0 / .35);
 }
+dialog.bk { width: min(680px, calc(100vw - 24px)); }
+dialog.bk .row { display: flex; gap: 8px; flex-wrap: wrap; }
+dialog.bk .nv-scroll { display: grid; gap: 10px; align-content: start; }
 dialog.nv:not([open]) { display: none; }
 dialog.nv:focus { outline: none; }
 dialog.nv[open] { display: block; animation: pop-in .2s ease-out; }
@@ -523,3 +525,71 @@ label.subhead { display: block; }
 .has-pending::after { content: ""; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--ribbon); box-shadow: 0 0 0 2px var(--surface); }
 .menu-item.has-pending::after { top: 50%; right: 14px; transform: translateY(-50%); }
 h3.subhead { font-family: inherit; }
+
+/* ---------- Mi cuaderno (vista dedicada, a todo el ancho) ---------- */
+body.view-notebook .inner.page { max-width: min(1480px, 100%); }
+.notebook { display: grid; gap: 14px; padding-bottom: 32px; }
+.notebook[hidden] { display: none; }
+.nb-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.nb-top h2 { margin: 0; flex: 1 1 auto; text-align: center; font-family: var(--font-display); outline: none; }
+.nb-back, .nb-export { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; }
+.nb-top .btn[disabled] { opacity: .5; cursor: not-allowed; }
+@media (max-width: 560px) {
+  .nb-top h2 { order: -1; flex-basis: 100%; text-align: left; }
+  .nb-back span, .nb-export span { font-size: .9rem; }
+}
+.nb-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.nb-tabs [role="tab"] {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 16px;
+  border: 0; border-bottom: 3px solid transparent; background: none; color: var(--muted); cursor: pointer; font: inherit; font-weight: 600;
+}
+.nb-tabs [role="tab"] small { font-weight: 400; font-variant-numeric: tabular-nums; }
+.nb-tabs [role="tab"]:hover { color: var(--ink); }
+.nb-tabs [role="tab"][aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.nb-head { display: grid; gap: 10px; }
+.nb-head:empty { display: none; }
+.nb-body { display: grid; gap: 12px; align-content: start; min-height: 40vh; }
+.nb-empty { padding: 28px 4px; text-align: center; }
+.nb-filters .addcat { border-style: dashed; background: transparent; }
+.nb-filters .swatch { display: inline-block; width: 12px; height: 12px; margin: 0 6px 0 0; border: 1px solid var(--line); vertical-align: -1px; cursor: inherit; }
+.nb-body .nv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+@media (min-width: 1100px) { .nb-body .nv-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.nb-group { border: 1px solid var(--line); border-radius: 12px; background: rgb(var(--glass-a) / .55); padding: 4px 12px 12px; }
+.nb-group > summary { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font-weight: 600; }
+.nb-group > summary small { color: var(--muted); font-weight: 400; }
+.nb-tagname { color: var(--accent); }
+.nb-grid { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+.nb-card {
+  display: grid; align-content: start; gap: 6px; padding: 12px; border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 12px; background: rgb(var(--glass-a) / .6);
+}
+.nb-card[style*="--card-hl"] { border-left-color: var(--card-hl); background: color-mix(in srgb, var(--card-hl) 22%, transparent); }
+.nb-card .nbtns { grid-column: auto; justify-content: flex-start; }
+.nb-colorname { color: var(--muted); font-size: .85rem; margin-right: auto; }
+.nb-notepreview { font-size: .92rem; }
+
+/* ---------- Paseo inicial (tour) ---------- */
+.tour-shield { position: fixed; inset: 0; z-index: 100; background: transparent; }
+.tour-ring {
+  position: fixed; z-index: 101; border-radius: 12px; pointer-events: none;
+  box-shadow: 0 0 0 3px var(--accent), 0 0 0 9999px rgb(10 8 4 / .62); transition: left .2s, top .2s, width .2s, height .2s;
+}
+.tour-ring[hidden] { display: none; }
+.tour-card {
+  position: fixed; z-index: 102; width: min(360px, calc(100vw - 24px)); padding: 16px 18px; border-radius: 14px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); outline: none; display: grid; gap: 8px;
+}
+.tour-card.center { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 24px)); }
+.tour-card h2 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; }
+.tour-card p { margin: 0; line-height: 1.5; }
+.tour-count { color: var(--muted); font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
+.tour-btns { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.tour-nav { display: flex; gap: 8px; }
+@media (max-width: 639px) {
+  .tour-card, .tour-card.center { left: 0; right: 0; bottom: 0; top: auto; transform: none; width: auto; border-radius: 16px 16px 0 0; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .tour-card.center { top: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .tour-ring { transition: none; } }
+
+/* Menú de ajustes: fondo sólido (sin transparencia ni desenfoque) */
+.menu { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
